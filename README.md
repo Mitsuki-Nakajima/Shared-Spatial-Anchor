@@ -1,77 +1,122 @@
 # Shared Spatial Anchor / Multiplayer Mixed Reality Prototype
 
-## Overview
-
-This project explores how to build a multiplayer mixed reality environment using Unity and Meta Quest 3.
-
-The larger goal of the project is to create a virtual version of the NYU Makerspace where users can interact together in the same metaverse environment. Ideally, this includes both users who are physically inside the Makerspace and users who are joining remotely from different real-world locations.
-
-The main technical question of this prototype is:
-
-> How can multiple users in different physical spaces share position and movement information inside one common virtual Makerspace?
-
-This report is written as a tutorial and progress report so that other team members can understand the current implementation and continue development.
+## NYU Makerspace Metaverse Project
 
 
 
-## Project Goal
+# Overview
 
-The goal of this prototype is to move away from relying entirely on Meta’s Multiplayer Mixed Reality template and instead rebuild the minimum necessary systems from scratch.
+This project explores the implementation of a multiplayer mixed reality (MR) environment using Unity and Meta Quest 3.
 
-The prototype focuses on:
+The main goal is to create a virtual version of the NYU Makerspace where:
+- users physically inside the Makerspace and
+- users joining remotely from different locations
 
-- setting up a clean Unity mixed reality project
-- understanding the core ideas behind multiplayer MR
-- creating a shared virtual Makerspace coordinate system
-- spawning networked players
-- synchronizing basic player avatar movement
-- preparing a calibration system for aligning local user space with the shared virtual space
+can interact together inside the same shared virtual environment.
+
+The primary research question explored in this prototype is:
+
+> How can users located in completely different real-world environments share a common spatial coordinate system inside one virtual mixed reality space?
+
+This report is written as both:
+- a progress report
+- and a tutorial/documentation guide
+
+so that future team members can understand, reproduce, and continue development of the project.
 
 
-## Problem
 
-In a normal same-room mixed reality application, multiple users can share the same physical environment. In that case, shared spatial anchors or colocation systems can help everyone agree on the same physical reference point.
+# Initial Research and Template Exploration
 
-Our project has a more difficult requirement:
+## Meta Multiplayer MR Template
 
+At the beginning of the project, we explored Meta’s Multiplayer Mixed Reality template and Shared Spatial Anchor systems.
+
+The template demonstrated:
+- multiplayer networking
+- avatar synchronization
+- shared anchor workflows
+- colocation systems
+- shared reference frame concepts
+
+The goal of this stage was to understand how Meta structures multiplayer MR applications before rebuilding a simplified custom version.
+
+
+
+# Core Problem
+
+The provided Meta template primarily assumes:
+- users are in the same physical room
+- users share a common real-world environment
+
+However, our project introduces a more difficult scenario:
 - one user may be inside the actual NYU Makerspace
-- another user may join from home
-- another user may join from a different room or building
+- another user may join remotely from home
+- another user may join from a different building entirely
 
-These users do not share the same real-world coordinate system.
+These users do not share the same physical coordinate system.
 
-Therefore, the challenge is not only networking. The challenge is also spatial alignment.
+Therefore, the challenge is not only multiplayer networking, but also:
 
-Each headset has its own local tracking space. To make everyone appear in the same virtual Makerspace, each user’s local position must be converted into a shared virtual coordinate system.
+> how to align multiple independent local XR tracking spaces into one consistent virtual Makerspace coordinate system.
 
 
 
-## Design Approach
+# Project Goal
 
-The current design separates the system into two spaces:
+The project gradually evolved from:
+- learning the Meta template
+- into building a lightweight custom architecture
 
-1. **Local XR Space**
-   - This is the coordinate system created by each user’s headset.
-   - It tracks the user’s head and hands relative to their own physical room.
+focused specifically on:
+- remote mixed reality participation
+- shared virtual coordinate systems
+- multiplayer pose synchronization
+- calibration and alignment systems
 
-2. **Shared Makerspace Space**
-   - This is the common virtual coordinate system for the NYU Makerspace model.
-   - All networked avatars should be displayed relative to this space.
+Instead of relying entirely on the original template, the project now rebuilds the essential systems from scratch in a cleaner and more understandable structure.
+
+
+
+# System Architecture
+
+The current system separates the application into two major spaces:
+
+## 1. Local XR Space
+
+Each user has their own local XR tracking space generated by their headset.
+
+This includes:
+- headset position
+- controller/hand tracking
+- room-relative motion
+
+The local XR space exists independently for each user.
+
+
+
+## 2. Shared Virtual Makerspace Space
+
+A shared virtual `MakerspaceRoot` acts as the global coordinate system for the metaverse environment.
+
+All player positions are ultimately converted into this shared virtual space before being synchronized across the network.
+
+
+
+# Overall Workflow
 
 The intended workflow is:
 
-1. The user’s headset and hands are tracked locally by `XR Origin`.
-2. The local pose is converted into the shared Makerspace coordinate system.
-3. The converted pose is sent through the network.
-4. Other users render that avatar in the shared virtual Makerspace.
+1. The user’s headset and hands are tracked locally through `XR Origin`
+2. Local poses are converted into the shared Makerspace coordinate system
+3. The transformed poses are transmitted over the network
+4. Other users render those avatars inside the same virtual environment
 
-This makes it possible for users in different physical rooms to still appear together in one virtual environment.
+This allows users in completely different physical spaces to appear together in one shared metaverse scene.
 
 
 
-## Current Implementation
-
-The current Unity scene contains the following main objects:
+# Current Unity Scene Structure
 
 ```text
 XR Origin (VR)
@@ -85,471 +130,491 @@ UI
 EventSystem
 ```
 
-### XR Origin
 
-`XR Origin (VR)` is used for local headset and controller tracking. It represents the local user’s real-world tracking space.
 
-The XR Origin is not treated as the networked player object. Instead, it is used only to read local tracking data.
+# Implemented Components
 
-### NetworkManager
+## XR Origin
 
-`NetworkManager` handles multiplayer networking using Unity Netcode for GameObjects.
+`XR Origin (VR)` handles:
+- local headset tracking
+- hand/controller tracking
+- room-relative motion
 
-It is responsible for:
-
-- starting a host session
-- starting a client session
-- spawning the player prefab
-- managing networked objects
-
-### MakerspaceRoot
-
-`MakerspaceRoot` represents the shared virtual NYU Makerspace coordinate system.
-
-In the current prototype, this can be a simple placeholder scene. Later, it can be replaced with a more accurate model of the Makerspace.
-
-### PlayerAvatar
-
-`PlayerAvatar` is the networked player representation.
-
-The current avatar is simple and uses basic shapes:
-
-- a sphere for the head
-- a cube for the left hand
-- a cube for the right hand
-
-This keeps the prototype simple while still allowing us to test player position and movement synchronization.
-
-### SharedSpaceManager
-
-`SharedSpaceManager` is responsible for converting local XR poses into the shared Makerspace coordinate system.
-
-It stores a reference to the Makerspace root and provides a method for applying the alignment matrix.
-
-### CalibrationManager
-
-`CalibrationManager` stores the alignment transformation between a user’s local XR space and the shared virtual Makerspace space.
-
-The calibration workflow is not fully finished yet, but the structure is prepared.
-
-### SessionBootstrap
-
-`SessionBootstrap` provides simple functions for starting the project as a host or client.
-
-The UI buttons call these functions.
-
-### PlayerRigTracker
-
-`PlayerRigTracker` connects the local XR tracking data to the networked avatar.
-
-It reads:
-
-- headset transform
-- left hand transform
-- right hand transform
-
-Then it applies the shared-space conversion and updates the avatar’s head and hand objects.
+The XR Origin is used only for local tracking and is not directly used as the networked avatar.
 
 
 
-## Tutorial: How to Set Up the Project
+## NetworkManager
 
-### 1. Create a Unity Project
+`NetworkManager` handles:
+- host/client startup
+- player spawning
+- network synchronization
+- multiplayer session management
 
-Create a new Unity 3D project.
+The project currently uses:
+- Unity Netcode for GameObjects
+- Unity Transport
 
-Recommended setup:
 
-- Unity 6 or compatible Unity version
+
+## PlayerAvatar
+
+The current avatar is intentionally simplified for debugging and testing purposes.
+
+The avatar currently contains:
+- head sphere
+- left hand cube
+- right hand cube
+
+This lightweight representation makes it easier to test synchronization and calibration systems before introducing more complex avatar models.
+
+
+
+# Calibration System Evolution
+
+One of the largest developments during this project was the evolution of the calibration system.
+
+
+
+## Original Calibration Method
+
+The original prototype used a simple single-point calibration method.
+
+This method:
+- used one local headset pose
+- mapped it to one target position in the Makerspace
+- generated a simple alignment offset
+
+While this approach was easy to implement, it introduced several limitations:
+- inaccurate alignment
+- unstable rotation
+- drift
+- poor scaling for larger spaces
+
+
+
+# Enhanced Multi-Point Calibration System
+
+The calibration system was later expanded into a more advanced multi-point calibration framework.
+
+The updated system now:
+- collects multiple calibration points
+- validates calibration quality
+- computes optimal rigid transformations
+- supports fallback calibration methods
+- stores calibration persistently between sessions
+
+This became one of the major technical focuses of the project.
+
+
+
+## Multi-Point Calibration Workflow
+
+The intended workflow is:
+
+1. The user collects several known spatial reference points
+2. Each local XR point is paired with a target point inside the virtual Makerspace
+3. The system computes an optimal rigid transformation
+4. The resulting transformation matrix aligns the user’s local XR space with the shared virtual environment
+
+
+
+# Kabsch-Based Transformation Solver
+
+To improve spatial alignment accuracy, the project experiments with a simplified implementation of the Kabsch algorithm.
+
+The Kabsch algorithm attempts to compute:
+- the optimal rotation
+- and translation
+
+between two sets of 3D points.
+
+In this project, it is used to align:
+- local XR calibration points
+with
+- target Makerspace points
+
+This allows the system to estimate a more accurate shared-space transformation than the original single-point method.
+
+
+
+# Calibration Validation
+
+The updated calibration system also introduces:
+- average error measurements
+- maximum error measurements
+- validation thresholds
+- degenerate configuration detection
+
+This allows the system to evaluate whether a calibration result is stable enough to use.
+
+Possible invalid calibration situations include:
+- calibration points being too close together
+- collinear points
+- unstable transformations
+- excessive alignment error
+
+
+
+# Calibration Persistence
+
+The calibration system also supports persistence using `PlayerPrefs`.
+
+This allows:
+- calibration data to survive application restarts
+- reduced setup time for repeated sessions
+
+
+
+# SharedSpaceManager
+
+`SharedSpaceManager` handles:
+- converting local XR poses into shared Makerspace coordinates
+- applying alignment matrices
+- managing the global shared virtual coordinate system
+
+
+
+# PlayerRigTracker
+
+`PlayerRigTracker` connects:
+- local headset tracking
+- local hand tracking
+- networked avatar synchronization
+- calibration systems
+
+The script:
+- reads local XR transforms
+- applies calibration transformations
+- updates networked avatar transforms
+- manages fallback calibration behavior
+- performs update-rate management
+- supports network synchronization structures
+
+
+
+# Fallback Calibration Architecture
+
+One important addition to the system is the layered fallback architecture.
+
+The current calibration pipeline is:
+
+```text
+Enhanced Multi-Point Calibration
+        ↓
+Legacy Single-Point Calibration
+        ↓
+SharedSpaceManager Conversion
+        ↓
+Raw Local Pose
+```
+
+This design improves:
+- debugging
+- testing flexibility
+- failure recovery
+- system robustness
+
+If one calibration method fails, the system can still continue functioning using simpler fallback approaches.
+
+
+
+# Tutorial: How to Set Up the Project
+
+## 1. Create a Unity Project
+
+Create a new Unity 3D project using:
+- Unity 6 or compatible version
 - Android build support
-- Meta Quest 3 as the target device
+
+Target platform:
+- Meta Quest 3
 
 
 
-### 2. Install Required Packages
+## 2. Install Required Packages
 
-Install the following packages:
-
+Install:
 - XR Plug-in Management
 - OpenXR
 - XR Interaction Toolkit
 - Unity Netcode for GameObjects
 - Unity Transport
 
-These packages are needed for Quest XR tracking and multiplayer networking.
 
 
-
-### 3. Enable XR for Quest
+## 3. Enable XR
 
 In Unity:
 
-1. Open `Edit > Project Settings`
-2. Go to `XR Plug-in Management`
-3. Enable XR for Android
-4. Select OpenXR
-5. Enable Meta Quest support if available
+```text
+Edit > Project Settings > XR Plug-in Management
+```
+
+Enable:
+- OpenXR for Android
+- Meta Quest support
 
 
 
-### 4. Add XR Origin
+## 4. Add XR Origin
 
-In the Unity menu:
+Create:
 
 ```text
 GameObject > XR > XR Origin (VR)
 ```
 
-This creates the local player tracking rig.
-
-The important tracked objects are usually:
-
-```text
-XR Origin (VR)
-└── Camera Offset
-    ├── Main Camera
-    ├── LeftHand
-    └── RightHand
-```
-
-These transforms are used later by `PlayerRigTracker`.
+This creates:
+- headset tracking
+- left hand tracking
+- right hand tracking
 
 
 
-### 5. Add Networking
+## 5. Add Networking
 
-Create an empty GameObject named:
+Create:
 
 ```text
 NetworkManager
 ```
 
-Add the following components:
-
+Add:
 - `NetworkManager`
 - `Unity Transport`
 - `SessionBootstrap`
 
 Create UI buttons for:
-
 - Host
 - Client
 
-The Host button should call:
-
-```text
-SessionBootstrap.StartHostSession()
-```
-
-The Client button should call:
-
-```text
-SessionBootstrap.StartClientSession()
-```
 
 
+## 6. Create Shared Makerspace Root
 
-### 6. Create the Shared Makerspace Root
-
-Create an empty GameObject named:
+Create:
 
 ```text
 MakerspaceRoot
 ```
 
-This object represents the shared virtual coordinate system.
+This acts as the shared virtual coordinate system.
 
-For now, it can contain placeholder objects such as:
-
-- floor plane
+For testing purposes, placeholder geometry such as:
+- cubes
+- planes
 - walls
-- tables
-- equipment blocks
 
-Later, this can be replaced with a more accurate NYU Makerspace model.
+can be used.
 
 
 
-### 7. Create SharedSpaceManager
+## 7. Create PlayerAvatar Prefab
 
-Create an empty GameObject named:
-
-```text
-SharedSpaceManager
-```
-
-Attach the `SharedSpaceManager.cs` script.
-
-In the Inspector, drag `MakerspaceRoot` into the `Makerspace Root` field.
-
-
-
-### 8. Create CalibrationManager
-
-Create an empty GameObject named:
-
-```text
-CalibrationManager
-```
-
-Attach the `CalibrationManager.cs` script.
-
-This script stores the local-to-shared alignment matrix.
-
-
-
-### 9. Create PlayerAvatar Prefab
-
-Create an empty GameObject named:
+Create:
 
 ```text
 PlayerAvatar
 ```
 
-Add three child objects:
+Add:
+- Head
+- LeftHand
+- RightHand
 
-```text
-PlayerAvatar
-├── Head
-├── LeftHand
-└── RightHand
-```
-
-Recommended temporary shapes:
-
-- `Head`: sphere
-- `LeftHand`: cube
-- `RightHand`: cube
-
-Add the following components to `PlayerAvatar`:
-
+Add components:
 - `NetworkObject`
 - `NetworkTransform`
 - `PlayerRigTracker`
 
-Then drag `PlayerAvatar` into the Project window to make it a prefab.
-
-Assign this prefab to the `Player Prefab` field in `NetworkManager`.
-
+Convert the object into a prefab and assign it to:
+- `NetworkManager > Player Prefab`
 
 
-### 10. Run the Project
 
-To test in the Unity Editor:
+## 8. Add Calibration Systems
 
+Create:
+- `SharedSpaceManager`
+- `CalibrationManager`
+
+Assign:
+- `MakerspaceRoot`
+- calibration scripts
+- calibration data structures
+
+
+
+## 9. Run the Project
+
+To test:
 1. Press Play
-2. Click the Host button
-3. Confirm that `PlayerAvatar(Clone)` appears in the Hierarchy
-
-This confirms that the network session can start and the player prefab can spawn.
-
-For full multiplayer testing, the project should be tested with multiple instances or multiple Quest devices.
+2. Start Host
+3. Confirm that `PlayerAvatar(Clone)` appears
+4. Test synchronization and calibration systems
 
 
 
-## Code Structure
+# Current Progress
 
-The main scripts are:
-
-```text
-Assets/Scripts/SessionBootstrap.cs
-Assets/Scripts/SharedSpaceManager.cs
-Assets/Scripts/CalibrationManager.cs
-Assets/Scripts/PlayerRigTracker.cs
-```
-
-### SessionBootstrap.cs
-
-Purpose:
-
-- starts host session
-- starts client session
-
-### SharedSpaceManager.cs
-
-Purpose:
-
-- stores reference to `MakerspaceRoot`
-- converts local poses into shared virtual coordinates
-
-### CalibrationManager.cs
-
-Purpose:
-
-- stores alignment matrix
-- calculates the offset between local XR space and target virtual spawn point
-
-### PlayerRigTracker.cs
-
-Purpose:
-
-- reads local XR head and hand transforms
-- applies shared-space conversion
-- updates the networked avatar transforms
+Currently implemented:
+- XR project setup
+- Quest-compatible XR Origin
+- multiplayer networking setup
+- host/client startup
+- player prefab spawning
+- shared virtual coordinate system structure
+- PlayerRigTracker architecture
+- single-point calibration system
+- experimental multi-point calibration framework
+- calibration validation systems
+- persistent calibration storage
+- fallback calibration architecture
+- GitHub project repository and collaboration workflow
 
 
 
-## Current Progress
+# Known Problems and Challenges
 
-Completed so far:
+## 1. Remote Shared Space Alignment
 
-- Explored Meta Multiplayer Mixed Reality template
-- Created a clean Unity project structure
-- Added XR Origin for Quest-style tracking
-- Added NetworkManager and Unity Transport
-- Created Host and Client buttons
-- Created basic networked PlayerAvatar prefab
-- Confirmed that the player avatar spawns when starting a host session
-- Added scripts for session startup, shared-space conversion, calibration structure, and player rig tracking
-- Uploaded the Unity project to GitHub with a Unity `.gitignore`
+The largest challenge remains:
+- aligning users in different physical environments
 
-In progress:
-
-- full calibration button / UI
-- testing with actual Quest devices
-- verifying head and hand movement synchronization on device
-- accurate alignment between real space and virtual Makerspace
-- replacing placeholder geometry with a more accurate Makerspace model
+Unlike same-room MR systems, remote users cannot rely purely on shared physical anchors.
 
 
 
-## Known Problems and Concerns
+## 2. Calibration Complexity
 
-### 1. Shared Spatial Anchors vs Remote Users
-
-Shared Spatial Anchors are useful when multiple users are in the same physical location.
-
-However, our project also needs users to join from different locations. This means Shared Spatial Anchors alone may not solve the full problem.
-
-For remote users, we likely need a shared virtual coordinate system and a calibration method instead of relying only on same-room colocation.
-
-### 2. Calibration Accuracy
-
-The biggest technical concern is calibration.
-
-If each user maps their local space slightly differently, avatars may appear offset or rotated incorrectly.
-
-Possible problems include:
-
-- incorrect spawn alignment
-- different forward directions
-- different floor heights
-- headset tracking drift
-- mismatch between physical room size and virtual Makerspace size
-
-### 3. Networking Limitations
-
-The current networked avatar is very simple.
-
-It is enough for early testing, but future versions will need:
-
-- smoother movement
-- better interpolation
-- hand/controller state syncing
-- object interaction syncing
-- possibly voice or communication features
-
-### 4. Template Complexity
-
-The Meta template was helpful for learning, but it contains many extra systems.
-
-Pros of the template:
-
-- useful reference
-- demonstrates multiplayer MR structure
-- includes many built-in features
-
-Cons of the template:
-
-- difficult to isolate only the parts we need
-- includes miscellaneous systems
-- harder to explain and maintain
-- not directly designed for our remote Makerspace use case
+The enhanced calibration system improves flexibility and accuracy, but also introduces:
+- increased implementation complexity
+- debugging difficulty
+- possible numerical instability
+- dependency management concerns
 
 
 
-## Advantages of the Current Approach
+## 3. Numerical Stability
 
-### Lightweight Structure
+The current prototype includes a simplified Kabsch/SVD-style implementation.
 
-By rebuilding from scratch, the project is easier to understand and debug.
+While useful for experimentation, additional testing is still needed to verify:
+- numerical stability
+- robustness
+- edge-case handling
 
-The current version only includes the systems that are directly related to our goal.
 
-### Better for Learning
 
-This approach makes it clearer how each part works:
+## 4. Dependency Management
 
+The expanded calibration framework now depends on:
+- calibration validators
+- calibration data structures
+- matrix utility structures
+
+Managing these dependencies correctly is important for future development.
+
+
+
+# Advantages of the Current Architecture
+
+## Lightweight and Modular
+
+Compared to the original Meta template, the rebuilt architecture is:
+- easier to understand
+- easier to modify
+- easier to debug
+
+
+
+## Better Understanding of MR Systems
+
+Rebuilding the systems manually improved understanding of:
 - XR tracking
-- networking
-- player spawning
-- pose conversion
-- calibration
-
-### More Flexible for Remote Participation
-
-Using a shared virtual Makerspace coordinate system makes the design more flexible than relying only on same-room shared anchors.
-
-This approach can support users who are not physically in the same place.
+- multiplayer synchronization
+- spatial calibration
+- shared coordinate systems
 
 
 
-## Disadvantages of the Current Approach
+## Flexible for Remote Participation
 
-### More Work Required
-
-Because we are not relying entirely on the template, we need to manually implement more systems.
-
-### Calibration Is Still Difficult
-
-The biggest unresolved issue is still how to make calibration accurate and easy for users.
-
-### Current Visuals Are Temporary
-
-The current avatar and Makerspace environment are placeholders.
-
-They are useful for testing, but not final presentation-quality assets.
+Using a virtual Makerspace coordinate system instead of relying only on same-room anchors makes the system more adaptable for remote users.
 
 
 
-## Future Work
+# Disadvantages
 
-The next development steps are:
+## Increased Development Work
 
-1. Add a working calibration button
-2. Test with two Quest 3 devices
-3. Verify that head and hand movement are synced correctly
-4. Improve avatar movement smoothing
-5. Build or import an accurate Makerspace model
-6. Add object interaction
-7. Synchronize interactable objects across the network
-8. Explore persistent anchors for users physically inside the Makerspace
-9. Add UI for joining, calibration, and debugging
-10. Document the final workflow for future team members
+Rebuilding systems manually requires:
+- more implementation effort
+- more debugging
+- more calibration testing
 
 
 
-## Conclusion
+## Calibration Is Still Unresolved
 
-This project is an early prototype for a multiplayer mixed reality NYU Makerspace environment.
+The calibration system remains the largest unresolved technical challenge.
 
-The main contribution so far is not a finished application, but a simplified architecture for understanding and rebuilding the important parts of a multiplayer MR system.
-
-The prototype demonstrates:
-
-- how to set up a clean Unity MR project
-- how to start host/client networking
-- how to spawn networked players
-- how to represent users with simple head and hand avatars
-- how a shared virtual coordinate system can be used as the foundation for remote mixed reality collaboration
-
-The next major step is to complete calibration and test the system on multiple Meta Quest 3 devices.
+Perfect spatial alignment between independent XR spaces is still difficult.
 
 
 
-## Repository Notes
+## Current Environment Is Still Prototype-Level
 
-This repository should include:
+The current project focuses primarily on:
+- architecture
+- synchronization
+- calibration research
+
+rather than:
+- polished visuals
+- final user interaction systems
+
+
+
+# Future Work
+
+Future development goals include:
+
+1. Complete the calibration workflow UI
+2. Test with multiple Quest 3 devices
+3. Improve avatar smoothing and synchronization
+4. Add synchronized object interaction
+5. Build a more accurate Makerspace environment
+6. Improve calibration robustness
+7. Explore persistent spatial anchors
+8. Add interaction tools and shared object manipulation
+9. Add voice communication
+10. Continue refining the shared-space alignment system
+
+
+
+# Conclusion
+
+This project evolved from a simple exploration of Meta’s multiplayer MR template into a more advanced prototype focused on shared-space calibration and remote mixed reality participation.
+
+The project now explores:
+- multiplayer MR networking
+- shared virtual coordinate systems
+- calibration frameworks
+- multi-point spatial alignment
+- avatar synchronization
+- remote XR collaboration architectures
+
+Although the project is still an early prototype, it establishes a strong technical foundation for future development of a shared NYU Makerspace metaverse environment.
+
+
+
+# Repository Notes
+
+The repository should contain:
 
 ```text
 Assets/
@@ -559,7 +624,7 @@ README.md
 .gitignore
 ```
 
-The following folders should not be committed:
+The following folders should NOT be committed:
 
 ```text
 Library/
@@ -571,4 +636,12 @@ Logs/
 UserSettings/
 ```
 
-These files are ignored because Unity can regenerate them locally.
+These folders are regenerated automatically by Unity.
+
+
+
+# Authors
+
+Mitsuki Nakajima  
+Zachary Kublalsingh
+NYU VIP — Metaverse for Education
