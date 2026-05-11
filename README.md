@@ -1,7 +1,5 @@
 # Shared Spatial Anchor / Multiplayer Mixed Reality Prototype
 
-## NYU Makerspace Metaverse Project
-
 
 
 # Overview
@@ -22,11 +20,8 @@ This report is written as both:
 - a progress report
 - and a tutorial/documentation guide
 
-so that future team members can understand, reproduce, and continue development of the project.
 
-
-
-# Initial Research and Template Exploration
+# Initial Research / Template Exploration
 
 ## Meta Multiplayer MR Template
 
